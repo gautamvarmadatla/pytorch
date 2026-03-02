@@ -33,6 +33,7 @@ inline void parallel_for(
   internal::invoke_parallel(
       begin, end, grain_size, [&](int64_t begin, int64_t end) {
         c10::ParallelGuard guard(true);
+        c10::ParallelPathGuard pg;
         f(begin, end);
       });
 #else
@@ -75,6 +76,7 @@ inline scalar_t parallel_reduce(
       [&](const int64_t my_begin, const int64_t my_end) {
         const auto tid = at::get_thread_num();
         c10::ParallelGuard guard(true);
+        c10::ParallelPathGuard pg;
         results[tid] = f(my_begin, my_end, ident);
       });
 

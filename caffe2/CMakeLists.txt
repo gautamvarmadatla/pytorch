@@ -1903,6 +1903,10 @@ if(BUILD_TEST)
     endif()
   endforeach()
 
+  if(TARGET caffe2::openmp)
+    target_link_libraries(test_parallel caffe2::openmp)
+  endif()
+
   if(USE_MPS)
     foreach(test_src ${Caffe2_MPS_TEST_SRCS})
       get_filename_component(test_name ${test_src} NAME_WE)

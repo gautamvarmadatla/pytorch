@@ -35,27 +35,40 @@ inline void invoke_parallel(
   num_threads = std::max<int64_t>(1, num_threads);
 
   std::atomic<int64_t> tid_counter{0};
-  std::atomic<int64_t> next{begin};
   int64_t chunk_size = std::max<int64_t>(
       grain_size > 0 ? grain_size : 1, divup((end - begin), num_threads));
 
 #pragma omp parallel
   {
     int64_t tid = tid_counter.fetch_add(1, std::memory_order_relaxed);
-    if (tid < num_threads) {
+    int64_t begin_tid = begin + tid * chunk_size;
+    if (begin_tid < end) {
       internal::ThreadIdGuard tid_guard(tid);
-      for (;;) {
-        int64_t b = next.fetch_add(chunk_size, std::memory_order_relaxed);
-        if (b >= end)
-          break;
-        try {
-          f(b, std::min(end, b + chunk_size));
-        } catch (...) {
-          if (!err_flag.test_and_set()) {
-            eptr = std::current_exception();
-          }
-          break;
+      try {
+        f(begin_tid, std::min(end, begin_tid + chunk_size));
+      } catch (...) {
+        if (!err_flag.test_and_set()) {
+          eptr = std::current_exception();
         }
+      }
+    }
+  }
+  if (!eptr) {
+    for (;;) {
+      int64_t tid = tid_counter.fetch_add(1, std::memory_order_relaxed);
+      if (tid >= num_threads)
+        break;
+      int64_t begin_tid = begin + tid * chunk_size;
+      if (begin_tid >= end)
+        break;
+      internal::ThreadIdGuard tid_guard(tid);
+      try {
+        f(begin_tid, std::min(end, begin_tid + chunk_size));
+      } catch (...) {
+        if (!err_flag.test_and_set()) {
+          eptr = std::current_exception();
+        }
+        break;
       }
     }
   }

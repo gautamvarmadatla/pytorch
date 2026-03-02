@@ -4,8 +4,6 @@
 #include <ATen/DLConvertor.h>
 #include <ATen/Parallel.h>
 #include <ATen/ParallelFuture.h>
-#include <c10/util/ParallelGuard.h>
-
 #include <atomic>
 #include <iostream>
 // NOLINTNEXTLINE(modernize-deprecated-headers)
@@ -128,12 +126,19 @@ TEST(TestParallel, ParallelForNoDuplicateWork) {
   }
 }
 
-TEST(TestParallel, InParallelRegionRespectsGuard) {
-  ASSERT_FALSE(at::in_parallel_region());
-  {
-    c10::ParallelGuard guard(true);
-    ASSERT_TRUE(at::in_parallel_region());
+TEST(TestParallel, InParallelRegionDetectedInsideParallelFor) {
+  NumThreadsGuard guard(4);
+  if (at::get_num_threads() < 2) {
+    GTEST_SKIP();
   }
+  ASSERT_FALSE(at::in_parallel_region());
+  std::atomic<bool> seen_in_parallel{false};
+  at::parallel_for(0, 100, 1, [&](int64_t /*begin*/, int64_t /*end*/) {
+    if (at::in_parallel_region()) {
+      seen_in_parallel.store(true, std::memory_order_relaxed);
+    }
+  });
+  ASSERT_TRUE(seen_in_parallel.load());
   ASSERT_FALSE(at::in_parallel_region());
 }
 

@@ -3,6 +3,7 @@
 #if AT_PARALLEL_OPENMP
 #include <ATen/Parallel.h>
 #include <ATen/ParallelFuture.h>
+#include <c10/util/ParallelGuard.h>
 
 #include <atomic>
 
@@ -14,7 +15,6 @@
 #include <ATen/native/mkldnn/IDeepRegistration.h>
 #endif
 
-#include <c10/util/ParallelGuard.h>
 #include <caffe2/utils/threadpool/pthreadpool-cpp.h>
 
 namespace at {
@@ -23,7 +23,6 @@ namespace {
 // Number of threads set by the user
 std::atomic<int> num_threads{-1};
 thread_local int this_thread_id{0};
-
 } // namespace
 
 void init_num_threads() {
@@ -94,11 +93,10 @@ void set_thread_num(int id) {
 
 bool in_parallel_region() {
 #ifdef _OPENMP
-  // Also check c10::ParallelGuard, which is set by at::parallel_for on all
-  // platforms. omp_in_parallel() suffices on most configurations, but on some
-  // Windows setups with mixed OpenMP runtimes the OpenMP in_parallel query
-  // returns false inside parallel regions, causing nested parallelism.
-  return omp_in_parallel() || c10::ParallelGuard::is_enabled();
+  // c10::ParallelPathGuard::is_active() is set only in the parallel path;
+  // on mixed OMP runtimes (e.g. VCOMP+libomp on Windows) omp_in_parallel()
+  // returns false inside active parallel regions, so we check both.
+  return omp_in_parallel() || c10::ParallelPathGuard::is_active();
 #else
   return false;
 #endif
