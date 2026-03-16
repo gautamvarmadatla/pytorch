@@ -10890,7 +10890,6 @@ class TestNNDeviceType(NNTestCase):
         out = F.interpolate(x, size=(8, 8), mode="lanczos", align_corners=False, antialias=True)
         self.assertEqual(x, out)
 
-
     @onlyCUDA
     def test_upsamplingBicubic2d_many_channels(self, device):
         # Exercises the parallelized batch/channel kernel for small spatial
