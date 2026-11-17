@@ -3,10 +3,10 @@ name = "lumen-ci"
 version = "0.1.0"
 dependencies = [
     "pyyaml==6.0.2",
-    "GitPython==3.1.45",
+    "GitPython==3.2.1",
     "docker==7.1.0",
-    "pytest==7.3.2",
-    "uv==0.9.6"
+    "pytest==9.2.0",
+    "uv==0.13.4"
 ]
 
 [tool.setuptools]
